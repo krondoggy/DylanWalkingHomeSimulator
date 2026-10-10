@@ -2,6 +2,12 @@
 
 A tiny, deliberately unwinnable walking game inside a late-80s / 90s computer interface. Import D.Y.L.A.N., open the simulator, and start the journey home. Home keeps finding somewhere else to be.
 
+## Play online
+
+[Launch D.W.H.S. on GitHub Pages](https://krondoggy.github.io/DylanWalkingHomeSimulator/).
+
+GitHub Pages publishes the repository root from `codex/initial-game`. Pushes to that branch automatically update the site. The `.nojekyll` file keeps the static HTML, CSS, JavaScript, and character assets intact without a build step.
+
 ## Play locally
 
 Requires Node.js for the preview server and automated checks. The game itself is plain HTML, CSS, and JavaScript with no build step or dependencies.
