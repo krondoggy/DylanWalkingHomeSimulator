@@ -8,9 +8,20 @@
   const manifest = window.DWHS_ASSETS || {};
   const assets = {}, keys = new Set(), directions = new Map();
   let state = engine.createGame(), last = performance.now(), lastPaint = 0, lastHUD = 0, oldNeighborhood = state.neighborhood;
-  let audio = null, musicPlaying = false, songURL = null, touchJog = false, helpPaused = false;
+  let audio = null, musicPlaying = false, touchJog = false, helpPaused = false, musicIndex = 0, musicResume = false, musicToken = 0;
   let lastContact = '', lastLogs = '', messageUntil = 0;
-  const names = { travis: ['TRAVIS', 'A ride. Technically in a car.', 'Request a ride', '#728c9e'], jon: ['JON', 'Cigarettes. + temporary happiness.', 'Request cigarettes', '#7a8063'], blake: ['BLAKE', 'Whataburger fries. + stamina.', 'Request fries', '#b3794f'] };
+  const names = { travis: ['TRAVIS', 'A ride. Technically in a car.', 'Request a ride', '#e1d7af'], jon: ['JON', 'Cigarettes. + temporary happiness.', 'Request cigarettes', '#486b9d'], blake: ['BLAKE', 'Whataburger fries. + stamina.', 'Request fries', '#c27b49'] };
+  const favors = { travis: 'RIDE', jon: 'CIGS', blake: 'FRIES' };
+  const compactView = window.matchMedia('(max-width: 650px)');
+  function fitCanvas() {
+    const width = compactView.matches ? 400 : 640;
+    if (canvas.width !== width) canvas.width = width;
+    canvas.height = 360; ctx.imageSmoothingEnabled = false;
+    if ($('feed-resolution')) $('feed-resolution').textContent = `${width} × 360`;
+  }
+  compactView.addEventListener('change', fitCanvas);
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
   for (const id of ['dylan', 'travis', 'jon', 'blake']) {
     if (!manifest[id]) continue;
     const img = new Image(); img.onload = () => { assets[id] = img; lastContact = ''; drawPortraits(engine.getNearbyNPC(state)); }; img.src = manifest[id];
@@ -36,16 +47,28 @@
   function character(entity, camera, player = false) {
     const x = Math.round(entity.x - camera), y = Math.round(entity.y), id = player ? 'dylan' : entity.id;
     const motion = player && entity.moving ? Math.sin(state.elapsed * 15) * 2 : 0;
-    const shirt = player ? '#9c8db6' : (names[id] || ['', '', '', '#777'])[3];
-    rect(x - 12, y - 3, 25, 5, '#252a2c'); rect(x - 6, y - 18, 6, 15 + motion, '#303039'); rect(x + 2, y - 18, 6, 15 - motion, '#24242b');
-    rect(x - 8, y - 3 + motion, 8, 3, '#deded3'); rect(x + 2, y - 3 - motion, 8, 3, '#bdbdb3');
-    rect(x - 10, y - 34, 20, 21, shirt); rect(x - 13, y - 31, 4, 17 - motion, shirt); rect(x + 9, y - 31, 4, 17 + motion, shirt); rect(x - 7, y - 20, 14, 4, player ? '#807296' : '#555c67');
-    if (player) { rect(x + 5, y - 13, 1, 8, '#b9b8b8'); rect(x + 3, y - 6, 3, 1, '#b9b8b8'); }
-    drawHead(ctx, id, x - 16, y - 61 + Math.round(motion / 2), 33, 34, frameFor(entity.facing || 'down'));
-    if (!player) {
-      rect(x - 23, y - 78, 46, 12, '#141720'); rect(x - 23, y - 79, 46, 1, '#8c9190'); text(entity.name || names[id][0], x, y - 70, '#eee9ba', 8, 'center');
-      if (Math.hypot(entity.x - state.player.x, entity.y - state.player.y) <= 72) { text('[E]', x, y - 86, '#fff493', 9, 'center'); }
-    }
+    const shirt = player ? '#b5a0dc' : (names[id] || ['', '', '', '#777'])[3];
+    const near = !player && Math.hypot(entity.x - state.player.x, entity.y - state.player.y) <= engine.CONTACT_RADIUS;
+    // A little perspective near the back of the street keeps heads below the feed header.
+    const scale = clamp((y - 36) / 92, .69, 1);
+    const block = (dx, dy, width, height, color) => rect(x + dx * scale, y + dy * scale, width * scale, height * scale, color);
+    rect(x - 20, y - 3, 41, 7, '#20282d');
+    rect(x - 22, y + 3, 45, 2, player ? '#d1b6ff' : near ? '#fff5a9' : '#d9d3b0');
+    block(-10, -27, 9, 26 + motion, '#10151e'); block(3, -27, 9, 26 - motion, '#10151e');
+    block(-8, -25, 5, 22 + motion, '#414655'); block(5, -25, 5, 22 - motion, '#343847');
+    block(-12, -5 + motion, 12, 5, '#f5ead1'); block(3, -5 - motion, 12, 5, '#dcd9cc');
+    block(-16, -53, 33, 31, '#18212c'); block(-20, -49, 8, 27 - motion, '#18212c'); block(13, -49, 8, 27 + motion, '#18212c');
+    block(-14, -51, 29, 27, shirt); block(-18, -47, 6, 21 - motion, shirt); block(14, -47, 5, 21 + motion, shirt);
+    block(-9, -26, 20, 4, player ? '#8b72b4' : '#535461');
+    if (player) { block(-7, -43, 13, 7, '#e7b981'); block(-5, -37, 9, 3, '#e7d38e'); block(9, -22, 2, 13, '#dad7d9'); block(5, -11, 5, 2, '#dad7d9'); }
+    else { block(-18, -28 - motion, 6, 5, '#d4a385'); block(14, -28 + motion, 5, 5, '#d4a385'); }
+    drawHead(ctx, id, x - 26 * scale, y - 94 * scale + Math.round(motion / 2), 52 * scale, 52 * scale, frameFor(entity.facing || 'down'));
+    const labelY = player || y < 153 ? y + 10 : y - 128 * scale;
+    const labelWidth = player ? 58 : 82;
+    rect(x - labelWidth / 2 - 1, labelY - 1, labelWidth + 2, player ? 17 : 28, '#111924');
+    rect(x - labelWidth / 2, labelY, labelWidth, 1, player ? '#d4b5ff' : near ? '#fff1a0' : '#b6b9ab');
+    text(player ? 'DYLAN' : entity.name || names[id][0], x, labelY + 12, player ? '#e0caff' : '#fff4cf', 11, 'center');
+    if (!player) text(`${near ? 'TALK · ' : ''}${favors[id] || 'FAVOR'}`, x, labelY + 23, near ? '#fff39a' : '#c3cbd0', 9, 'center');
   }
   function house(x, y, width, wall, roof, number, camera) {
     x -= camera;
@@ -59,16 +82,19 @@
   }
   function tree(x, y, camera) { x -= camera; rect(x - 3, y - 33, 7, 34, '#53483e'); polygon([[x - 22, y - 25], [x - 17, y - 54], [x + 5, y - 66], [x + 24, y - 43], [x + 18, y - 22]], '#344d4c'); polygon([[x - 22, y - 25], [x - 17, y - 54], [x + 5, y - 66], [x - 3, y - 33]], '#49625a'); }
   function car(x, y, color, camera, occupied = false) {
-    x -= camera; rect(x - 24, y + 5, 51, 6, '#24272d'); rect(x - 17, y + 2, 9, 12, '#171820'); rect(x + 12, y + 2, 9, 12, '#171820'); rect(x - 26, y - 11, 54, 17, color);
+    x -= camera;
+    if (occupied) { const scale = Math.min(1.5, (y - 36) / 57); ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); x = 0; y = 0; }
+    rect(x - 24, y + 5, 51, 6, '#24272d'); rect(x - 17, y + 2, 9, 12, '#171820'); rect(x + 12, y + 2, 9, 12, '#171820'); rect(x - 26, y - 11, 54, 17, color);
     polygon([[x - 17, y - 12], [x - 10, y - 25], [x + 13, y - 25], [x + 22, y - 11]], color); polygon([[x - 12, y - 12], [x - 7, y - 22], [x + 2, y - 22], [x + 2, y - 12]], '#627b87'); polygon([[x + 5, y - 12], [x + 5, y - 22], [x + 11, y - 22], [x + 18, y - 12]], '#496374');
-    rect(x - 25, y, 5, 4, '#a85143'); rect(x + 23, y - 2, 5, 4, '#dbd5a0'); rect(x - 26, y + 5, 54, 2, '#a1a5a6'); if (occupied) drawHead(ctx, 'dylan', x - 1, y - 25, 14, 15, 2);
+    rect(x - 25, y, 5, 4, '#a85143'); rect(x + 23, y - 2, 5, 4, '#dbd5a0'); rect(x - 26, y + 5, 54, 2, '#a1a5a6');
+    if (occupied) { drawHead(ctx, 'dylan', x - 9, y - 43, 28, 28, 2); rect(x - 30, y + 17, 62, 11, '#111926'); text('DYLAN · RIDE', x + 1, y + 25, '#e2cbff', 8, 'center'); ctx.restore(); }
   }
   function drawWorld() {
-    const camera = clamp(state.player.x - 250, 0, 560);
+    const W = canvas.width, H = canvas.height, camera = clamp(state.player.x - W * .4, 0, engine.WORLD.width - W);
     ctx.imageSmoothingEnabled = false;
-    rect(0, 0, 640, 360, '#383c54'); rect(0, 22, 640, 22, '#6b5260'); rect(0, 44, 640, 22, '#a4716e'); rect(0, 66, 640, 31, '#c69b82');
+    rect(0, 0, W, H, '#383c54'); rect(0, 22, W, 22, '#6b5260'); rect(0, 44, W, 22, '#a4716e'); rect(0, 66, W, 31, '#c69b82');
     for (let i = 0; i < 22; i++) { const x = (i * 89 - camera * .18) % 700 - 25, h = 14 + (i * 31 % 37); rect(x, 103 - h, 35 + i % 3 * 9, h, i % 2 ? '#55545f' : '#5b5863'); }
-    rect(0, 97, 640, 263, '#65736a'); rect(0, 169, 640, 13, '#788476'); rect(0, 183, 640, 25, '#a4a399'); rect(0, 205, 640, 4, '#d2c9b3'); rect(0, 209, 640, 83, '#484c52'); rect(0, 291, 640, 4, '#777b79'); rect(0, 295, 640, 25, '#a7a59b'); rect(0, 320, 640, 40, '#64766a');
+    rect(0, 97, W, 263, '#65736a'); rect(0, 169, W, 13, '#788476'); rect(0, 183, W, 25, '#b5b2a6'); rect(0, 205, W, 4, '#e0d8c3'); rect(0, 209, W, 83, '#555b64'); rect(0, 291, W, 4, '#898d88'); rect(0, 295, W, 25, '#b8b5a8'); rect(0, 320, W, 40, '#64766a');
     for (let i = -1; i < 19; i++) { const x = i * 80 - camera % 80; rect(x, 250, 33, 3, '#b9b18a'); rect(x + 24, 185, 1, 20, '#7e847e'); rect(x + 57, 297, 1, 22, '#858981'); }
     for (let i = 0; i < 9; i++) house(18 + i * 148, 93 + i % 2 * 6, 98, ['#9a8f80', '#7f8b89', '#a09483'][i % 3], ['#56505b', '#695951'][i % 2], 104 + i * 2, camera);
     for (const x of [135, 470, 763, 1097]) tree(x, 180, camera);
@@ -80,13 +106,15 @@
     const riding = state.buffs.some(b => b.id === 'ride');
     for (const entry of entities) { if (entry.player && riding) car(state.player.x, state.player.y - 3, '#74879a', camera, true); else character(entry.entity, camera, entry.player); }
     for (let i = 0; i < 21; i++) { const x = (i * 71 - camera + 1200) % 1200; rect(x, 336 + i % 3 * 8, 2, 3, '#85917a'); }
-    rect(7, 7, 165, 26, '#111926'); text('D.W.H.S. / NEIGHBORHOOD', 14, 18, '#b8c4bc', 8); text(`BLOCK ${String(state.neighborhood).padStart(3, '0')}  ·  HOME IS THIS WAY →`, 14, 28, '#e6d8a1', 7);
-    rect(491, 7, 142, 17, '#111926'); text('HOME: 1.2 KM (PROBABLY)', 498, 18, '#eee0ac', 8);
-    if (state.buffs.some(b => b.id === 'guilt')) { text('GUILT TRIP IN PROGRESS', 320, 346, '#f0c0bd', 9, 'center'); }
+    rect(7, 7, W < 500 ? 113 : 175, W < 500 ? 19 : 29, '#111926');
+    if (W < 500) text(`BLOCK ${String(state.neighborhood).padStart(3, '0')}`, 14, 20, '#e6d8a1', 11);
+    else { text('D.W.H.S. / NEIGHBORHOOD', 14, 19, '#b8c4bc', 9); text(`BLOCK ${String(state.neighborhood).padStart(3, '0')} · KEEP WALKING →`, 14, 30, '#e6d8a1', 8); }
+    rect(W - 135, 7, 128, 19, '#111926'); text('HOME? KEEP RIGHT →', W - 14, 20, '#eee0ac', 10, 'right');
+    if (state.buffs.some(b => b.id === 'guilt')) { rect(W / 2 - 103, H - 27, 206, 18, '#3a2228'); text('GUILT TRIP IN PROGRESS', W / 2, H - 14, '#ffd5cd', 10, 'center'); }
   }
   function drawPortraits(npc) {
-    portrait.clearRect(0, 0, 64, 64); portrait.fillStyle = '#1c2824'; portrait.fillRect(0, 0, 64, 64); drawHead(portrait, 'dylan', 2, 2, 60, 60, 0);
-    contactPortrait.clearRect(0, 0, 42, 42); contactPortrait.fillStyle = '#5d6267'; contactPortrait.fillRect(0, 0, 42, 42); drawHead(contactPortrait, npc ? npc.id : 'nobody', 2, 2, 38, 38, 0);
+    const paint = (target, id, color) => { const width = target.canvas.width, height = target.canvas.height; target.clearRect(0, 0, width, height); target.fillStyle = color; target.fillRect(0, 0, width, height); drawHead(target, id, 2, 2, width - 4, height - 4, 0); };
+    paint(portrait, 'dylan', '#1c2824'); paint(contactPortrait, npc ? npc.id : 'nobody', '#394654');
   }
   function message(title, body, kind = '') { $('message-title').textContent = title; $('message-text').textContent = body; document.querySelector('.message-window').className = `message-window ${kind}`; $('announcer').textContent = body; messageUntil = state.elapsed + 9; }
   function hud() {
@@ -120,8 +148,8 @@
     $('feed-status').textContent = result.ok ? `${npc.name} has temporarily improved the situation.` : 'Friendship bandwidth exceeded.'; lastContact = ''; hud();
   }
   function clearInput() { keys.clear(); directions.clear(); touchJog = false; document.querySelectorAll('.held').forEach(el => el.classList.remove('held')); }
-  function setPaused(value) { state.paused = value; clearInput(); $('pause-overlay').hidden = !value; $('pause').textContent = value ? 'Resume' : 'Pause'; lastContact = ''; hud(); }
-  function reset() { state = engine.createGame(); oldNeighborhood = state.neighborhood; lastContact = ''; lastLogs = ''; messageUntil = 9; $('pause-overlay').hidden = true; $('pause').textContent = 'Pause'; clearInput(); message('HOME.EXE — FRESH OPTIMISM', 'A brand-new walk. This time you are definitely going to make it home.'); $('feed-status').textContent = 'New walk initialized. Confidence restored.'; hud(); canvas.focus({ preventScroll: true }); }
+  function setPaused(value) { state.paused = value; clearInput(); $('pause-overlay').hidden = !value; $('pause').textContent = value ? 'Resume' : 'Pause'; if (value) { musicResume = musicResume || musicPlaying; musicToken++; if (audio) audio.pause(); musicPlaying = false; updateMusicButton(); } else resumeMusic(); lastContact = ''; hud(); }
+  function reset() { state = engine.createGame(); oldNeighborhood = state.neighborhood; lastContact = ''; lastLogs = ''; messageUntil = 9; $('pause-overlay').hidden = true; $('pause').textContent = 'Pause'; clearInput(); message('HOME.EXE — FRESH OPTIMISM', 'A brand-new walk. This time you are definitely going to make it home.'); $('feed-status').textContent = 'New walk initialized. Confidence restored.'; resumeMusic(); hud(); canvas.focus({ preventScroll: true }); }
   function openHelp() { helpPaused = state.paused; setPaused(true); $('help-dialog').showModal(); }
   $('help-dialog').addEventListener('close', () => setPaused(helpPaused));
   $('help').addEventListener('click', openHelp); $('help-title').addEventListener('click', openHelp); $('pause').addEventListener('click', () => setPaused(!state.paused)); $('resume').addEventListener('click', () => setPaused(false)); $('new-walk').addEventListener('click', reset); $('request').addEventListener('click', request); $('talk-mobile').addEventListener('click', request);
@@ -139,11 +167,38 @@
     const release = event => { directions.delete(event.pointerId); if (button.id === 'jog') touchJog = false; button.classList.remove('held'); };
     button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('lostpointercapture', release); button.addEventListener('contextmenu', e => e.preventDefault());
   }
-  function loadSong(source, label) { if (audio) audio.pause(); audio = new Audio(source); audio.loop = true; musicPlaying = false; $('music').disabled = false; $('music').textContent = 'Play music'; $('song-name').textContent = label; audio.addEventListener('error', () => { musicPlaying = false; $('music').textContent = 'Track unavailable'; $('song-name').textContent = 'Choose another audio file.'; }); }
-  $('music').addEventListener('click', async () => { if (!audio) return; if (musicPlaying) { audio.pause(); musicPlaying = false; } else { try { await audio.play(); musicPlaying = true; } catch { $('song-name').textContent = 'Audio could not play. Try another file.'; } } $('music').textContent = musicPlaying ? 'Pause music' : 'Play music'; });
-  $('load-song').addEventListener('click', () => $('song-file').click());
-  $('song-file').addEventListener('change', event => { const file = event.target.files[0]; if (!file) return; if (songURL) URL.revokeObjectURL(songURL); songURL = URL.createObjectURL(file); loadSong(songURL, file.name); });
-  if (manifest.song) loadSong(manifest.song, 'Neighborhood soundtrack loaded.');
+  const musicButton = $('music');
+  const suppliedTracks = Array.isArray(window.DWHS_MUSIC) && window.DWHS_MUSIC.length ? window.DWHS_MUSIC : Array.isArray(manifest.music) && manifest.music.length ? manifest.music : manifest.song ? [{ src: manifest.song, title: 'Neighborhood soundtrack' }] : [];
+  const tracks = suppliedTracks.map(track => typeof track === 'string' ? { src: track, title: 'Neighborhood soundtrack' } : track).filter(track => track && typeof track.src === 'string' && track.src.trim());
+  let musicUnavailable = false;
+  function updateMusicButton() {
+    if (!musicButton) return;
+    musicButton.hidden = tracks.length === 0;
+    musicButton.disabled = state.paused || musicUnavailable || !tracks.length;
+    musicButton.textContent = musicUnavailable ? 'Music unavailable' : musicPlaying ? 'Music: on' : 'Music: off';
+    musicButton.setAttribute('aria-pressed', String(musicPlaying));
+    const title = tracks[musicIndex] && (tracks[musicIndex].title || 'Neighborhood soundtrack');
+    musicButton.setAttribute('aria-label', musicUnavailable ? 'Soundtrack unavailable' : `${musicPlaying ? 'Pause' : 'Play'} music${title ? `: ${title}` : ''}`);
+    musicButton.title = state.paused ? 'Resume the walk to play music' : title || '';
+  }
+  function loadTrack(index) {
+    musicToken++; if (audio) audio.pause();
+    musicIndex = index % tracks.length; musicPlaying = false; musicUnavailable = false;
+    const current = new Audio(); current.preload = 'none'; current.src = tracks[musicIndex].src; current.loop = tracks.length === 1; audio = current;
+    current.addEventListener('ended', () => { if (audio !== current || state.paused) return; loadTrack(musicIndex + 1); playMusic(); });
+    current.addEventListener('error', () => { if (audio !== current) return; musicToken++; musicPlaying = false; musicResume = false; musicUnavailable = true; updateMusicButton(); $('announcer').textContent = 'The soundtrack is unavailable. Your walk can continue.'; });
+    updateMusicButton();
+  }
+  async function playMusic() {
+    if (!audio || musicUnavailable || state.paused) return;
+    const current = audio, token = ++musicToken;
+    try { await current.play(); if (audio !== current || token !== musicToken || state.paused) return; musicPlaying = true; }
+    catch { if (audio !== current || token !== musicToken) return; musicPlaying = false; $('announcer').textContent = 'Music could not start. Tap Music to try again.'; }
+    updateMusicButton();
+  }
+  function resumeMusic() { if (musicResume) { musicResume = false; playMusic(); } updateMusicButton(); }
+  if (musicButton) musicButton.addEventListener('click', () => { if (!audio || state.paused) return; musicResume = false; if (musicPlaying) { musicToken++; audio.pause(); musicPlaying = false; updateMusicButton(); } else playMusic(); });
+  if (tracks.length) loadTrack(0); else updateMusicButton();
   document.addEventListener('visibilitychange', () => { last = performance.now(); clearInput(); if (document.hidden && !state.paused) setPaused(true); });
   function frame(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now;

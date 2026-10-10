@@ -5,6 +5,7 @@
   "description": "D.W.H.S. — an endless retro walking-home gag game.",
   "scripts": {
     "start": "node preview.mjs",
+    "music": "node scripts/build-music-library.mjs",
     "test": "node --test tests/*.test.cjs"
   },
   "engines": {
