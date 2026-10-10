@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#008080">
+  <meta name="description" content="D.W.H.S. — Dylan Walking Home Simulator. A tiny, endlessly unsuccessful walk home for your 486.">
+  <title>D.W.H.S. — Dylan Walking Home Simulator</title>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+  <main class="desktop">
+    <div class="desktop-caption"><span aria-hidden="true">▦</span> MAINFRAME SYSTEMS / ENTERTAINMENT DIVISION</div>
+    <section class="window" aria-labelledby="game-title">
+      <header class="titlebar"><h1 id="game-title"><span aria-hidden="true">▥</span> D.W.H.S. — DYLAN WALKING HOME SIMULATOR</h1><button id="help-title" class="title-help" aria-label="How to play">?</button></header>
+      <nav class="menubar" aria-label="Game menu"><a href="index.html">← Import utility</a><button id="new-walk">New walk</button><button id="pause">Pause</button><button id="help">Help</button><span>256 COLORS · NO DESTINATION</span></nav>
+      <div class="window-content">
+        <div class="mission-strip"><div><strong>OBJECTIVE: GET HOME.</strong><span>Estimated arrival: eventually™</span></div><span class="mission-tag">HOME.EXE</span></div>
+        <div class="workspace">
+          <section class="play-pane" aria-label="The neighborhood">
+            <div class="preview-label"><span>LIVE NEIGHBORHOOD FEED</span><span id="block-label">BLOCK 001</span></div>
+            <div class="viewport" id="viewport"><canvas id="game-canvas" width="640" height="360" tabindex="0" role="img" aria-label="Dylan in a pixelated neighborhood. Use arrow keys or WASD to move, then E to talk to nearby friends."></canvas><div class="scanlines" aria-hidden="true"></div><div class="pause-overlay" id="pause-overlay" hidden><strong>WALK SUSPENDED</strong><span>Even doing nothing takes a while.</span><button class="classic-button" id="resume">Resume walk</button></div></div>
+            <div class="feed-footer"><span><i aria-hidden="true"></i> <span id="feed-status">Dylan has entered the neighborhood.</span></span><span>640 × 360</span></div>
+            <section class="message-window" aria-labelledby="message-title"><div class="message-title"><span id="message-title">HOME.EXE — A SMALL COMPLICATION</span><span aria-hidden="true">▰</span></div><p id="message-text">Your house is just down the road. Allegedly. Find your friends for a little help.</p></section>
+            <div class="touch-controls" aria-label="Movement controls">
+              <div class="dpad"><button data-direction="up" aria-label="Walk up">▲</button><button data-direction="left" aria-label="Walk left">◀</button><span aria-hidden="true">✚</span><button data-direction="right" aria-label="Walk right">▶</button><button data-direction="down" aria-label="Walk down">▼</button></div>
+              <div class="touch-actions"><button id="talk-mobile" class="classic-button">TALK / REQUEST <small>E / SPACE</small></button><button id="jog" class="classic-button">JOG <small>HOLD SHIFT</small></button></div>
+              <div class="keyboard-hint">WASD / ARROWS: WALK<br>E / SPACE: TALK<br>SHIFT: JOG · P: PAUSE</div>
+            </div>
+          </section>
+          <aside class="properties" aria-label="Dylan's status">
+            <fieldset class="character-card"><legend>Subject status</legend><div class="subject-row"><canvas id="portrait-canvas" width="64" height="64" aria-label="Dylan portrait" role="img"></canvas><div><strong>D.YL.A.N</strong><span>PROFESSIONAL PEDESTRIAN</span><span class="green">CURRENTLY: <b id="activity">WANDERING</b></span></div></div><div class="stat"><div><label for="stamina">STAMINA</label><span id="stamina-value">100%</span></div><meter id="stamina" min="0" max="100" value="100">100%</meter></div><div class="stat happiness"><div><label for="happiness">HAPPINESS</label><span id="happiness-value">70%</span></div><meter id="happiness" min="0" max="100" value="70">70%</meter></div><dl><div><dt>STEPS:</dt><dd id="steps">0</dd></div><div><dt>WALK TIME:</dt><dd id="walk-time">00:00</dd></div><div><dt>HOME:</dt><dd id="home-distance">1.2 KM (PROBABLY)</dd></div></dl></fieldset>
+            <fieldset class="contact"><legend>Nearby friend</legend><div class="contact-row"><canvas id="npc-portrait" width="42" height="42" aria-hidden="true"></canvas><div><strong id="npc-name">NO ONE IN RANGE</strong><span id="npc-detail">Walk over to a nameplate.</span></div></div><button class="classic-button" id="request" disabled>Find a friend first</button><p id="npc-status">TRAVIS: ride · JON: cigarettes<br>BLAKE: Whataburger fries</p></fieldset>
+            <fieldset class="buff-panel"><legend>Temporary life improvements</legend><ul id="buffs"><li class="empty-buff">No active favors.<br>Try asking somebody for something.</li></ul></fieldset>
+            <fieldset class="audio-panel"><legend>Soundtrack drive</legend><div class="audio-buttons"><button id="music" class="classic-button" disabled>Music: no track</button><button id="load-song" class="classic-button file-button" type="button">Load song…</button><input id="song-file" type="file" accept="audio/*" hidden></div><p id="song-name">Insert a local audio file.</p></fieldset>
+          </aside>
+        </div>
+        <details class="event-log"><summary>System log <span>Latest neighborhood incidents</span></summary><ol id="log"><li>WALK PROCESS STARTED.</li></ol></details>
+      </div>
+      <footer class="statusbar"><span id="status-text">Destination unresolved. Keep walking.</span><span id="lap-label">WALK 001</span><span>D.W.H.S. v0.95</span></footer>
+    </section>
+    <p class="desktop-footer">MAINFRAME SYSTEMS © 1995 · A WALK WITH NO END IN SIGHT</p>
+  </main>
+  <dialog id="help-dialog"><form method="dialog"><div class="dialog-title">D.W.H.S. — User assistance</div><div class="dialog-body"><h2>DYLAN WALKING<br>HOME SIMULATOR</h2><p>You are Dylan. Home is somewhere to the right. This should be easy.</p><p>Walk with <b>WASD / arrow keys</b> or the on-screen pad. Get close to a friend and press <b>E / Space</b> or <b>Talk / Request</b>. Hold <b>Shift / Jog</b> to move faster.</p><p><b>TRAVIS</b> gives a short car ride.<br><b>JON</b> lends a little happiness.<br><b>BLAKE</b> supplies Whataburger fries and stamina.</p><p>Favors have cooldowns. Keep asking and your friends may say no. Rejection causes a short guilt trip. Home remains a long-term aspiration.</p><p class="asset-note">Friend portraits are placeholders until their photos arrive. Load your own song with “Load song…”.</p><button class="classic-button" value="close">I can make it home</button></div></form></dialog>
+  <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+  <script src="assets/characters.js"></script>
+  <script src="game-engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

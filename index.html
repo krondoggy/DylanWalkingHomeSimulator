@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#008080">
+  <meta name="description" content="Importing D.YL.A.N. Launch D.W.H.S. — Dylan Walking Home Simulator, the walk that never ends.">
+  <title>D.YL.A.N — D.W.H.S. Launcher</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="desktop">
+    <div class="desktop-caption" aria-hidden="true"><span class="computer-icon">▦</span> MAINFRAME SYSTEMS</div>
+    <section class="window" aria-labelledby="window-title">
+      <header class="titlebar"><h1 id="window-title"><span class="program-icon" aria-hidden="true">▥</span> D.YL.A.N — MAINFRAME IMPORT UTILITY</h1><button class="title-help" id="title-help" type="button" aria-label="About this utility">?</button></header>
+      <nav class="menubar" aria-label="Application menu">
+        <details class="menu"><summary><u>F</u>ile</summary><div class="menu-popup"><button type="button" id="restart-menu">Restart import</button></div></details>
+        <details class="menu"><summary><u>T</u>ransfer</summary><div class="menu-popup"><button type="button" id="pause-menu">Pause import</button><button type="button" id="sound-menu">Turn sound on</button></div></details>
+        <details class="menu"><summary><u>V</u>iew</summary><div class="menu-popup"><button type="button" id="grid-menu">Hide coordinate grid</button><button type="button" id="scan-menu">Hide scanlines</button></div></details>
+        <button class="menu-help" id="help-menu" type="button"><u>H</u>elp</button>
+      </nav>
+      <div class="window-content">
+        <div class="workspace">
+          <section class="preview-pane" aria-label="Rotating preview of D.YL.A.N">
+            <div class="preview-label"><span>OBJECT PREVIEW</span><span>256 COLORS</span></div>
+            <div class="viewport" id="viewport">
+              <div class="viewport-label">D.YL.A.N / HEAD_01.OBJ</div>
+              <div class="coordinate-grid" aria-hidden="true"></div>
+              <div class="axis-mark" aria-hidden="true"><span>Y</span><i></i><b>X</b></div>
+              <div class="head-housing"><canvas id="head-canvas" width="160" height="160" role="img" aria-label="A rotating pixelated head of the character, with long brown hair, facial hair, and ear gauges."></canvas></div>
+              <div class="scanlines" aria-hidden="true"></div>
+              <div class="viewport-bottom"><span id="rotation-label">ROT: 000°</span><span>SHADED / LOW RES</span></div>
+            </div>
+            <div class="preview-footer"><span class="signal-light" aria-hidden="true"></span><span id="preview-status">Rendering object...</span><span>160 × 160</span></div>
+          </section>
+          <aside class="properties" aria-label="Import information">
+            <fieldset><legend>Object information</legend><dl><div><dt>NAME:</dt><dd>D.YL.A.N</dd></div><div><dt>TYPE:</dt><dd>HUMAN</dd></div><div><dt>FORMAT:</dt><dd>ANALOG</dd></div><div><dt>HAIR:</dt><dd>LONG / BROWN</dd></div><div><dt>STATUS:</dt><dd class="green" id="object-status">IMPORTING...</dd></div></dl></fieldset>
+            <fieldset class="destination"><legend>Destination</legend><div class="drive-row"><span class="disk-icon" aria-hidden="true">▤</span><span>C:\MAINFRAME\<br>HUMANS\D_YL_A_N</span></div><div class="drive-meter" aria-hidden="true"><i></i></div><p>Available: 640 KB</p></fieldset>
+            <fieldset class="system"><legend>System monitor</legend><div class="monitor"><p>CPU <span>486DX2 / 66 MHz</span></p><p>MEM <span>16384 KB</span></p><div class="memory-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><p class="monitor-status" id="monitor-status">CONNECTION ESTABLISHED</p></div></fieldset>
+            <p class="small-note">Please do not turn off<br>your computer.</p>
+          </aside>
+        </div>
+        <section class="import-panel" aria-labelledby="import-label">
+          <div class="import-heading"><h2 id="import-label">IMPORTING D.YL.A.N</h2><span id="stage-label">STAGE 1 OUT OF 8</span></div>
+          <div class="progress-shell" role="progressbar" id="import-progress" aria-labelledby="import-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="progress-fill"></div><span id="progress-percent">0%</span></div>
+          <div class="import-detail"><span id="stage-detail">Reading human source data...</span><span id="bytes-label">0 / 640 KB</span></div>
+        </section>
+        <div class="bottom-controls"><label class="sound-checkbox"><input id="sound-toggle" type="checkbox"> Enable sound</label><span class="remaining">Time remaining: <b>Unknown</b></span><button class="classic-button" id="pause-button" type="button">Pause import</button></div>
+        <section class="game-launcher" aria-labelledby="game-title"><div><h2 id="game-title">D.W.H.S.</h2><p>DYLAN WALKING HOME SIMULATOR</p><small>One man. Three friends. Absolutely no arrival.</small></div><a class="classic-button launch-game" href="game.html">Launch game <span aria-hidden="true">▶</span></a></section>
+      </div>
+      <footer class="statusbar"><span id="status-text">Working...</span><span id="cycle-label">PASS 001</span><span>MAINFRAME v1.95</span><i class="resize-grip" aria-hidden="true"></i></footer>
+    </section>
+    <p class="desktop-footer">MAINFRAME SYSTEMS © 1995 <span>·</span> D.W.H.S. / HOME NOT FOUND</p>
+  </main>
+  <dialog id="about-dialog"><form method="dialog"><div class="dialog-title">About Mainframe Import Utility</div><div class="dialog-body"><p class="about-name">D.YL.A.N</p><p>Mainframe Import Utility, version 1.95</p><p>An analog human. A digital destination.<br>The import continues indefinitely.</p><p>MAINFRAME SYSTEMS © 1995</p><button class="classic-button" value="close">OK</button></div></form></dialog>
+  <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
+</body>
+</html>
