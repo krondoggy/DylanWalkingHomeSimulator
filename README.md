@@ -32,7 +32,9 @@ npm run music
 
 The command updates `assets/music/library.js` with every supported song in that folder. Filenames become track titles, with underscores changed to spaces. No manual manifest editing or package installation is needed. Run it again whenever you add, rename, or remove songs. Subfolders are not scanned.
 
-Preview with `npm start`, then commit and push the audio files and `library.js` to `codex/initial-game`. GitHub Pages updates the live game automatically. Players tap the music button to start or mute playback; the game has no drive picker or upload control. Browsers require a tap before they allow sound.
+Preview with `npm start`, then commit and push the audio files and `library.js` to `codex/initial-game`. GitHub Pages updates the live game automatically.
+
+The soundtrack starts with the game at 50% volume and plays the playlist continuously, returning to the first song after the last one. If a browser blocks autoplay, the first tap or keypress starts the music. The music button mutes or unmutes playback; the game has no drive picker or upload control.
 
 ## Character artwork
 

@@ -148,7 +148,7 @@
     $('feed-status').textContent = result.ok ? `${npc.name} has temporarily improved the situation.` : 'Friendship bandwidth exceeded.'; lastContact = ''; hud();
   }
   function clearInput() { keys.clear(); directions.clear(); touchJog = false; document.querySelectorAll('.held').forEach(el => el.classList.remove('held')); }
-  function setPaused(value) { state.paused = value; clearInput(); $('pause-overlay').hidden = !value; $('pause').textContent = value ? 'Resume' : 'Pause'; if (value) { musicResume = musicResume || musicPlaying; musicToken++; if (audio) audio.pause(); musicPlaying = false; updateMusicButton(); } else resumeMusic(); lastContact = ''; hud(); }
+  function setPaused(value) { state.paused = value; clearInput(); $('pause-overlay').hidden = !value; $('pause').textContent = value ? 'Resume' : 'Pause'; if (value) { musicResume = musicWanted; musicToken++; if (audio) audio.pause(); musicPlaying = false; musicPending = false; updateMusicButton(); } else resumeMusic(); lastContact = ''; hud(); }
   function reset() { state = engine.createGame(); oldNeighborhood = state.neighborhood; lastContact = ''; lastLogs = ''; messageUntil = 9; $('pause-overlay').hidden = true; $('pause').textContent = 'Pause'; clearInput(); message('HOME.EXE — FRESH OPTIMISM', 'A brand-new walk. This time you are definitely going to make it home.'); $('feed-status').textContent = 'New walk initialized. Confidence restored.'; resumeMusic(); hud(); canvas.focus({ preventScroll: true }); }
   function openHelp() { helpPaused = state.paused; setPaused(true); $('help-dialog').showModal(); }
   $('help-dialog').addEventListener('close', () => setPaused(helpPaused));
@@ -170,35 +170,55 @@
   const musicButton = $('music');
   const suppliedTracks = Array.isArray(window.DWHS_MUSIC) && window.DWHS_MUSIC.length ? window.DWHS_MUSIC : Array.isArray(manifest.music) && manifest.music.length ? manifest.music : manifest.song ? [{ src: manifest.song, title: 'Neighborhood soundtrack' }] : [];
   const tracks = suppliedTracks.map(track => typeof track === 'string' ? { src: track, title: 'Neighborhood soundtrack' } : track).filter(track => track && typeof track.src === 'string' && track.src.trim());
-  let musicUnavailable = false;
+  let musicUnavailable = false, musicWanted = tracks.length > 0, musicPending = false, musicGestureListening = false;
   function updateMusicButton() {
     if (!musicButton) return;
     musicButton.hidden = tracks.length === 0;
     musicButton.disabled = state.paused || musicUnavailable || !tracks.length;
-    musicButton.textContent = musicUnavailable ? 'Music unavailable' : musicPlaying ? 'Music: on' : 'Music: off';
-    musicButton.setAttribute('aria-pressed', String(musicPlaying));
+    const active = musicPlaying || musicPending;
+    musicButton.textContent = musicUnavailable ? 'Music unavailable' : active ? 'Music: on' : 'Music: off';
+    musicButton.setAttribute('aria-pressed', String(active));
     const title = tracks[musicIndex] && (tracks[musicIndex].title || 'Neighborhood soundtrack');
-    musicButton.setAttribute('aria-label', musicUnavailable ? 'Soundtrack unavailable' : `${musicPlaying ? 'Pause' : 'Play'} music${title ? `: ${title}` : ''}`);
+    musicButton.setAttribute('aria-label', musicUnavailable ? 'Soundtrack unavailable' : `${active ? 'Pause' : 'Play'} music${title ? `: ${title}` : ''}`);
     musicButton.title = state.paused ? 'Resume the walk to play music' : title || '';
   }
   function loadTrack(index) {
     musicToken++; if (audio) audio.pause();
-    musicIndex = index % tracks.length; musicPlaying = false; musicUnavailable = false;
-    const current = new Audio(); current.preload = 'none'; current.src = tracks[musicIndex].src; current.loop = tracks.length === 1; audio = current;
-    current.addEventListener('ended', () => { if (audio !== current || state.paused) return; loadTrack(musicIndex + 1); playMusic(); });
-    current.addEventListener('error', () => { if (audio !== current) return; musicToken++; musicPlaying = false; musicResume = false; musicUnavailable = true; updateMusicButton(); $('announcer').textContent = 'The soundtrack is unavailable. Your walk can continue.'; });
+    musicIndex = index % tracks.length; musicPlaying = false; musicPending = false; musicUnavailable = false;
+    const current = new Audio(); current.preload = 'none'; current.volume = .5; current.src = tracks[musicIndex].src; current.loop = tracks.length === 1; audio = current;
+    current.addEventListener('ended', () => { if (audio !== current || state.paused || !musicWanted) return; loadTrack(musicIndex + 1); playMusic(); });
+    current.addEventListener('error', () => { if (audio !== current) return; musicToken++; musicPlaying = false; musicPending = false; musicResume = false; musicWanted = false; musicUnavailable = true; stopMusicGestureRetry(); updateMusicButton(); $('announcer').textContent = 'The soundtrack is unavailable. Your walk can continue.'; });
     updateMusicButton();
   }
-  async function playMusic() {
-    if (!audio || musicUnavailable || state.paused) return;
-    const current = audio, token = ++musicToken;
-    try { await current.play(); if (audio !== current || token !== musicToken || state.paused) return; musicPlaying = true; }
-    catch { if (audio !== current || token !== musicToken) return; musicPlaying = false; $('announcer').textContent = 'Music could not start. Tap Music to try again.'; }
+  async function playMusic(fromGesture = false) {
+    if (!audio || musicUnavailable || state.paused || !musicWanted || (musicPending && !fromGesture)) return;
+    const current = audio, token = ++musicToken; musicPending = true; updateMusicButton();
+    try { await current.play(); if (audio !== current || token !== musicToken || state.paused || !musicWanted) return; musicPlaying = true; musicPending = false; stopMusicGestureRetry(); }
+    catch { if (audio !== current || token !== musicToken) return; musicPlaying = false; musicPending = false; listenForMusicGesture(); $('announcer').textContent = 'Music is ready. Start walking or tap Music to listen.'; }
     updateMusicButton();
   }
-  function resumeMusic() { if (musicResume) { musicResume = false; playMusic(); } updateMusicButton(); }
-  if (musicButton) musicButton.addEventListener('click', () => { if (!audio || state.paused) return; musicResume = false; if (musicPlaying) { musicToken++; audio.pause(); musicPlaying = false; updateMusicButton(); } else playMusic(); });
-  if (tracks.length) loadTrack(0); else updateMusicButton();
+  function retryMusicFromGesture(event) {
+    if (!musicWanted || musicUnavailable || state.paused || $('help-dialog').open) return;
+    if (event.target && event.target.closest && event.target.closest('#music, #pause, #resume, #help, #help-title, #new-walk, dialog, a, input, textarea, select')) return;
+    if (event.type === 'keydown' && (event.repeat || event.ctrlKey || event.altKey || event.metaKey || ['p', 'escape', 'tab', 'shift', 'control', 'alt', 'meta'].includes(event.key.toLowerCase()))) return;
+    if (event.type.startsWith('pointer') && event.button !== 0) return;
+    playMusic(true);
+  }
+  function listenForMusicGesture() {
+    if (musicGestureListening || !musicWanted || musicUnavailable) return;
+    musicGestureListening = true; document.addEventListener('pointerdown', retryMusicFromGesture, true); document.addEventListener('pointerup', retryMusicFromGesture, true); window.addEventListener('keydown', retryMusicFromGesture, true);
+  }
+  function stopMusicGestureRetry() {
+    if (!musicGestureListening) return;
+    musicGestureListening = false; document.removeEventListener('pointerdown', retryMusicFromGesture, true); document.removeEventListener('pointerup', retryMusicFromGesture, true); window.removeEventListener('keydown', retryMusicFromGesture, true);
+  }
+  function resumeMusic() { if (musicResume && musicWanted) { musicResume = false; playMusic(true); } updateMusicButton(); }
+  if (musicButton) musicButton.addEventListener('click', () => {
+    if (!audio || state.paused) return; musicResume = false;
+    if (musicPlaying || musicPending) { musicWanted = false; musicToken++; audio.pause(); musicPlaying = false; musicPending = false; stopMusicGestureRetry(); updateMusicButton(); }
+    else { musicWanted = true; listenForMusicGesture(); playMusic(true); }
+  });
+  if (tracks.length) { loadTrack(0); listenForMusicGesture(); playMusic(); } else updateMusicButton();
   document.addEventListener('visibilitychange', () => { last = performance.now(); clearInput(); if (document.hidden && !state.paused) setPaused(true); });
   function frame(now) {
     const dt = Math.min(.05, (now - last) / 1000); last = now;
